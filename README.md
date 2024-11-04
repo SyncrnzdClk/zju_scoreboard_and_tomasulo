@@ -4,8 +4,8 @@
 
 ## lab5
 
-- [ ] implement FU_div
-- [ ] implement FU_mul
+- [x] implement FU_div
+- [x] implement FU_mul
 - [ ] implement FU_mem
 - [ ] implement FU_jump
 - [ ] implement RV32core
