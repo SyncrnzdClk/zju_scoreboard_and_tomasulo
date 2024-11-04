@@ -17,12 +17,12 @@ module FU_ALU(
     reg[31:0] A, B;
     reg[31:0] res_reg;
     wire[31:0] res_wire;
-    always@(posedge clk) begin
+    always@(posedge clk) begin // read operands
         if(EN) begin // state == 0
-            Control <= ALUControl;
-            A <= ALUA;
+            Control <= ALUControl; // `Control` is used to choose the operation of ALU 
+            A <= ALUA; // read the oprands
             B <= ALUB;
-            state <= 1;
+            state <= 1; // the state here is useless
         end
         else state <= 0;
         res_reg <= res_wire;
@@ -41,7 +41,7 @@ module FU_ALU(
     localparam ALU_Ap4  = 4'b1011;
     localparam ALU_Bout = 4'b1100;
 
-    wire[4:0] shamt = B[4:0];
+    wire[4:0] shamt = B[4:0]; // shift amount
     wire[32:0] res_subu = {1'b0,A} - {1'b0,B};
 
     wire[31:0] res_ADD  = A + B;

@@ -9,7 +9,7 @@ module FU_div(
     wire res_valid;
     wire[63:0] divres;
     
-    reg state;//用来强行延迟一个周期
+    reg [23:0] state; // set laytency as 23 (please refer to config.json)
     initial begin
         state = 0;
     end
@@ -19,11 +19,11 @@ module FU_div(
 
     always@(posedge clk) begin
         if(EN & ~state) begin
-            A_reg <= TO_BE_FILLED;
-            B_reg <= TO_BE_FILLED;
+            A_reg <= A;
+            B_reg <= B;
             A_valid <= 1;
             B_valid <= 1;
-            state <= 1;
+            state <= 24'b1 << 23; // not sure whether this is the same as just setting a long number (maybe this takes more time in one cycle?)
         end
         else if(res_valid) begin
             A_valid <= 0;
@@ -42,6 +42,6 @@ module FU_div(
         .m_axis_dout_tdata(divres)
     );
 
-    assign res = divres[TO_BE_FILLED:TO_BE_FILLED];
+    assign res = divres[31:0]; // the output `res` has only 32 bits
 
 endmodule

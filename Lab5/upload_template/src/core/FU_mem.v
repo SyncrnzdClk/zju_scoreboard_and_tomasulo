@@ -14,7 +14,7 @@ module FU_mem(
 
     reg mem_w_reg;
     reg[2:0] bhw_reg;
-    reg[31:0] rs1_data_reg, rs2_data_reg, imm_reg,addr;
+    reg[31:0] rs1_data_reg, rs2_data_reg, imm_reg, addr;
     wire ack,stall;
     wire[31:0] mem_data_wire;
     reg [31:0] mem_data_reg;
