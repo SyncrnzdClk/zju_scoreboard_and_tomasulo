@@ -1,0 +1,17 @@
+# PPT
+*.pptx
+
+# contraint_sources
+constraint_sources/
+
+# design_sources
+design_sources/
+
+# report_template
+report_template/
+
+# riscv_sources
+riscv_sources/
+
+# simulation_sources
+simulation_sources/
