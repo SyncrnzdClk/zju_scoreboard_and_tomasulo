@@ -4,9 +4,9 @@
 
 ## lab5
 
-- [] implement FU_div
-- [] implement FU_mul
-- [] implement FU_mem
-- [] implement FU_jump
-- [] implement RV32core
-- [] implement CtrlUnit
+- [ ] implement FU_div
+- [ ] implement FU_mul
+- [ ] implement FU_mem
+- [ ] implement FU_jump
+- [ ] implement RV32core
+- [ ] implement CtrlUnit
