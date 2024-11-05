@@ -360,8 +360,6 @@ module CtrlUnit(
         FU_delay_cycles[3] <= 5'd7;         // MUL cycles
         FU_delay_cycles[4] <= 5'd24;        // DIV cycles
         FU_delay_cycles[5] <= 5'd2;         // JUMP cycles
-        for (i=0; i<6; i=i+1)
-            FU_writeback_reg[i] <= 5'b0;     // initialize the rd of each FU
         reg_ID_flush_next <= 0;
     end
 
@@ -389,24 +387,24 @@ module CtrlUnit(
             end
             if (use_FU == 0 | reg_ID_flush_next) begin
                 for (i=0; i<31; i=i+1)
-                    reservation_reg[i] <= reservation_reg[i+1]
-                reservation_reg[31] = 32'b0
+                    reservation_reg[i] <= reservation_reg[i+1];
+                reservation_reg[31] = 32'b0;
                 // TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
                 B_in_FU <= 0;
                 J_in_FU <= 0;
             end
             else if (FU_hazard  | reg_ID_flush) begin
                 for (i=0; i<31; i=i+1)
-                    reservation_reg[i] <= reservation_reg[i+1]
-                reservation_reg[31] = 32'b0
+                    reservation_reg[i] <= reservation_reg[i+1];
+                reservation_reg[31] = 32'b0;
                 // TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
                 B_in_FU <= 0;
                 J_in_FU <= 0;
                 end
             else if(valid_ID) begin  // register FU operation
                 for (i=0; i<31; i=i+1)
-                    reservation_reg[i] <= (i==FU_delay_cycles[use_FU] ? use_FU : reservation_reg[i+1])
-                reservation_reg[31] <= 32'b0
+                    reservation_reg[i] <= (i==FU_delay_cycles[use_FU] ? use_FU : reservation_reg[i+1]);
+                reservation_reg[31] <= 32'b0;
                 // TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
                 FU_status[use_FU] <= 1'b1; // set the corresponding FU busy
                 if(rd_used)begin
