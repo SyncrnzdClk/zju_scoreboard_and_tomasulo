@@ -9,7 +9,7 @@
 - [ ] implement FU_mem
 - [ ] implement FU_jump
 - [ ] implement RV32core
-- [ ] implement CtrlUnit
+- [x] implement CtrlUnit
 
 ## lab6
 > unreleased

@@ -145,20 +145,205 @@ module CtrlUnit(
                         {3{use_DIV}}  & 3'd4 |
                         {3{use_JUMP}} & 3'd5 ;
 
-    reg B_in_FU, J_in_FU;
-    reg[5:0] FU_status;
-    reg[2:0] reservation_reg [0:31];
-    reg[4:0] FU_write_to [5:0];
-    reg[5:0] FU_writeback_en;
-    reg[4:0] FU_delay_cycles [5:0];
+    reg B_in_FU, J_in_FU; // branch and jump
+    reg[5:0] FU_status; // flag for each FU, 1 is busy, 0 is free.
+    reg[2:0] reservation_reg [0:31]; // please refer to implementation notes
+    reg[4:0] FU_write_to [5:0]; // the destination register of the FU
+    reg[5:0] FU_writeback_en; // enable FU to write back when there is no hazard 
+    reg[4:0] FU_delay_cycles [5:0]; // record the FU's delay cycles
     reg reg_ID_flush_next;
     integer i;
+
+    // map the FU to it's current latency using brute force 
+    wire [4:0] latency [5:0];
+    assign latency[1] = reservation_reg[0] == 3'd1 ? 0 :
+                 reservation_reg[1] == 3'd1 ? 1 :
+                 reservation_reg[2] == 3'd1 ? 2 :
+                 reservation_reg[3] == 3'd1 ? 3 :
+                 reservation_reg[4] == 3'd1 ? 4 :
+                 reservation_reg[5] == 3'd1 ? 5 :
+                 reservation_reg[6] == 3'd1 ? 6 :
+                 reservation_reg[7] == 3'd1 ? 7 :
+                 reservation_reg[8] == 3'd1 ? 8 :
+                 reservation_reg[9] == 3'd1 ? 9 :
+                 reservation_reg[10] == 3'd1 ? 10 :
+                 reservation_reg[11] == 3'd1 ? 11 :
+                 reservation_reg[12] == 3'd1 ? 12 :
+                 reservation_reg[13] == 3'd1 ? 13 :
+                 reservation_reg[14] == 3'd1 ? 14 :
+                 reservation_reg[15] == 3'd1 ? 15 :
+                 reservation_reg[16] == 3'd1 ? 16 :
+                 reservation_reg[17] == 3'd1 ? 17 :
+                 reservation_reg[18] == 3'd1 ? 18 :
+                 reservation_reg[19] == 3'd1 ? 19 :
+                 reservation_reg[20] == 3'd1 ? 20 :
+                 reservation_reg[21] == 3'd1 ? 21 :
+                 reservation_reg[22] == 3'd1 ? 22 :
+                 reservation_reg[23] == 3'd1 ? 23 :
+                 reservation_reg[24] == 3'd1 ? 24 :
+                 reservation_reg[25] == 3'd1 ? 25 :
+                 reservation_reg[26] == 3'd1 ? 26 :
+                 reservation_reg[27] == 3'd1 ? 27 :
+                 reservation_reg[28] == 3'd1 ? 28 :
+                 reservation_reg[29] == 3'd1 ? 29 :
+                 reservation_reg[30] == 3'd1 ? 30 :
+                 reservation_reg[31] == 3'd1 ? 31 : 0;
+
+    assign latency[2] = reservation_reg[0] == 3'd2 ? 0 :
+                 reservation_reg[1] == 3'd2 ? 1 :
+                 reservation_reg[2] == 3'd2 ? 2 :
+                 reservation_reg[3] == 3'd2 ? 3 :
+                 reservation_reg[4] == 3'd2 ? 4 :
+                 reservation_reg[5] == 3'd2 ? 5 :
+                 reservation_reg[6] == 3'd2 ? 6 :
+                 reservation_reg[7] == 3'd2 ? 7 :
+                 reservation_reg[8] == 3'd2 ? 8 :
+                 reservation_reg[9] == 3'd2 ? 9 :
+                 reservation_reg[10] == 3'd2 ? 10 :
+                 reservation_reg[11] == 3'd2 ? 11 :
+                 reservation_reg[12] == 3'd2 ? 12 :
+                 reservation_reg[13] == 3'd2 ? 13 :
+                 reservation_reg[14] == 3'd2 ? 14 :
+                 reservation_reg[15] == 3'd2 ? 15 :
+                 reservation_reg[16] == 3'd2 ? 16 :
+                 reservation_reg[17] == 3'd2 ? 17 :
+                 reservation_reg[18] == 3'd2 ? 18 :
+                 reservation_reg[19] == 3'd2 ? 19 :
+                 reservation_reg[20] == 3'd2 ? 20 :
+                 reservation_reg[21] == 3'd2 ? 21 :
+                 reservation_reg[22] == 3'd2 ? 22 :
+                 reservation_reg[23] == 3'd2 ? 23 :
+                 reservation_reg[24] == 3'd2 ? 24 :
+                 reservation_reg[25] == 3'd2 ? 25 :
+                 reservation_reg[26] == 3'd2 ? 26 :
+                 reservation_reg[27] == 3'd2 ? 27 :
+                 reservation_reg[28] == 3'd2 ? 28 :
+                 reservation_reg[29] == 3'd2 ? 29 :
+                 reservation_reg[30] == 3'd2 ? 30 :
+                 reservation_reg[31] == 3'd2 ? 31 : 0;
+
+    assign latency[3] = reservation_reg[0] == 3'd3 ? 0 :
+                 reservation_reg[1] == 3'd3 ? 1 :
+                 reservation_reg[2] == 3'd3 ? 2 :
+                 reservation_reg[3] == 3'd3 ? 3 :
+                 reservation_reg[4] == 3'd3 ? 4 :
+                 reservation_reg[5] == 3'd3 ? 5 :
+                 reservation_reg[6] == 3'd3 ? 6 :
+                 reservation_reg[7] == 3'd3 ? 7 :
+                 reservation_reg[8] == 3'd3 ? 8 :
+                 reservation_reg[9] == 3'd3 ? 9 :
+                 reservation_reg[10] == 3'd3 ? 10 :
+                 reservation_reg[11] == 3'd3 ? 11 :
+                 reservation_reg[12] == 3'd3 ? 12 :
+                 reservation_reg[13] == 3'd3 ? 13 :
+                 reservation_reg[14] == 3'd3 ? 14 :
+                 reservation_reg[15] == 3'd3 ? 15 :
+                 reservation_reg[16] == 3'd3 ? 16 :
+                 reservation_reg[17] == 3'd3 ? 17 :
+                 reservation_reg[18] == 3'd3 ? 18 :
+                 reservation_reg[19] == 3'd3 ? 19 :
+                 reservation_reg[20] == 3'd3 ? 20 :
+                 reservation_reg[21] == 3'd3 ? 21 :
+                 reservation_reg[22] == 3'd3 ? 22 :
+                 reservation_reg[23] == 3'd3 ? 23 :
+                 reservation_reg[24] == 3'd3 ? 24 :
+                 reservation_reg[25] == 3'd3 ? 25 :
+                 reservation_reg[26] == 3'd3 ? 26 :
+                 reservation_reg[27] == 3'd3 ? 27 :
+                 reservation_reg[28] == 3'd3 ? 28 :
+                 reservation_reg[29] == 3'd3 ? 29 :
+                 reservation_reg[30] == 3'd3 ? 30 :
+                 reservation_reg[31] == 3'd3 ? 31 : 0;
+
+    assign latency[4] = reservation_reg[0] == 3'd4 ? 0 :
+                 reservation_reg[1] == 3'd4 ? 1 :
+                 reservation_reg[2] == 3'd4 ? 2 :
+                 reservation_reg[3] == 3'd4 ? 3 :
+                 reservation_reg[4] == 3'd4 ? 4 :
+                 reservation_reg[5] == 3'd4 ? 5 :
+                 reservation_reg[6] == 3'd4 ? 6 :
+                 reservation_reg[7] == 3'd4 ? 7 :
+                 reservation_reg[8] == 3'd4 ? 8 :
+                 reservation_reg[9] == 3'd4 ? 9 :
+                 reservation_reg[10] == 3'd4 ? 10 :
+                 reservation_reg[11] == 3'd4 ? 11 :
+                 reservation_reg[12] == 3'd4 ? 12 :
+                 reservation_reg[13] == 3'd4 ? 13 :
+                 reservation_reg[14] == 3'd4 ? 14 :
+                 reservation_reg[15] == 3'd4 ? 15 :
+                 reservation_reg[16] == 3'd4 ? 16 :
+                 reservation_reg[17] == 3'd4 ? 17 :
+                 reservation_reg[18] == 3'd4 ? 18 :
+                 reservation_reg[19] == 3'd4 ? 19 :
+                 reservation_reg[20] == 3'd4 ? 20 :
+                 reservation_reg[21] == 3'd4 ? 21 :
+                 reservation_reg[22] == 3'd4 ? 22 :
+                 reservation_reg[23] == 3'd4 ? 23 :
+                 reservation_reg[24] == 3'd4 ? 24 :
+                 reservation_reg[25] == 3'd4 ? 25 :
+                 reservation_reg[26] == 3'd4 ? 26 :
+                 reservation_reg[27] == 3'd4 ? 27 :
+                 reservation_reg[28] == 3'd4 ? 28 :
+                 reservation_reg[29] == 3'd4 ? 29 :
+                 reservation_reg[30] == 3'd4 ? 30 :
+                 reservation_reg[31] == 3'd4 ? 31 : 0;
+
+    assign latency[5] = reservation_reg[0] == 3'd5 ? 0 :
+                 reservation_reg[1] == 3'd5 ? 1 :
+                 reservation_reg[2] == 3'd5 ? 2 :
+                 reservation_reg[3] == 3'd5 ? 3 :
+                 reservation_reg[4] == 3'd5 ? 4 :
+                 reservation_reg[5] == 3'd5 ? 5 :
+                 reservation_reg[6] == 3'd5 ? 6 :
+                 reservation_reg[7] == 3'd5 ? 7 :
+                 reservation_reg[8] == 3'd5 ? 8 :
+                 reservation_reg[9] == 3'd5 ? 9 :
+                 reservation_reg[10] == 3'd5 ? 10 :
+                 reservation_reg[11] == 3'd5 ? 11 :
+                 reservation_reg[12] == 3'd5 ? 12 :
+                 reservation_reg[13] == 3'd5 ? 13 :
+                 reservation_reg[14] == 3'd5 ? 14 :
+                 reservation_reg[15] == 3'd5 ? 15 :
+                 reservation_reg[16] == 3'd5 ? 16 :
+                 reservation_reg[17] == 3'd5 ? 17 :
+                 reservation_reg[18] == 3'd5 ? 18 :
+                 reservation_reg[19] == 3'd5 ? 19 :
+                 reservation_reg[20] == 3'd5 ? 20 :
+                 reservation_reg[21] == 3'd5 ? 21 :
+                 reservation_reg[22] == 3'd5 ? 22 :
+                 reservation_reg[23] == 3'd5 ? 23 :
+                 reservation_reg[24] == 3'd5 ? 24 :
+                 reservation_reg[25] == 3'd5 ? 25 :
+                 reservation_reg[26] == 3'd5 ? 26 :
+                 reservation_reg[27] == 3'd5 ? 27 :
+                 reservation_reg[28] == 3'd5 ? 28 :
+                 reservation_reg[29] == 3'd5 ? 29 :
+                 reservation_reg[30] == 3'd5 ? 30 :
+                 reservation_reg[31] == 3'd5 ? 31 : 0;
     
-    wire WAW = TO_BE_FILLED; //这里判断预约寄存器的代码可能非常长
-    wire RAW_rs1 = TO_BE_FILLED;
-    wire RAW_rs2 = TO_BE_FILLED;
-    wire WB_structure_hazard = TO_BE_FILLED;
-    wire FU_structure_hazard = TO_BE_FILLED;
+    // wire WAW = TO_BE_FILLED; //这里判断预约寄存器的代码可能非常长
+    // please refer to implementation notes
+    wire WAW = (FU_status[1] & rd != 5'b0 & rd_used & rd == FU_write_to[1] & FU_delay_cycles[use_FU] < latency[1]) ? 1'b1 :
+               (FU_status[2] & rd != 5'b0 & rd_used & rd == FU_write_to[2] & FU_delay_cycles[use_FU] < latency[2]) ? 1'b1 :
+               (FU_status[3] & rd != 5'b0 & rd_used & rd == FU_write_to[3] & FU_delay_cycles[use_FU] < latency[3]) ? 1'b1 :
+               (FU_status[4] & rd != 5'b0 & rd_used & rd == FU_write_to[4] & FU_delay_cycles[use_FU] < latency[4]) ? 1'b1 :
+               (FU_status[5] & rd != 5'b0 & rd_used & rd == FU_write_to[5] & FU_delay_cycles[use_FU] < latency[5]) ? 1'b1 : 1'b0;
+
+    // please refer to implementation notes
+    wire RAW_rs1 = (FU_status[1] & rs1 != 5'b0 & rs1 == FU_write_to[1]) ? 1'b1 : 
+                   (FU_status[2] & rs1 != 5'b0 & rs1 == FU_write_to[2]) ? 1'b1 :
+                   (FU_status[3] & rs1 != 5'b0 & rs1 == FU_write_to[3]) ? 1'b1 :
+                   (FU_status[4] & rs1 != 5'b0 & rs1 == FU_write_to[4]) ? 1'b1 :
+                   (FU_status[5] & rs1 != 5'b0 & rs1 == FU_write_to[5]) ? 1'b1 : 1'b0;
+    
+    // please refer to implementation notes
+    wire RAW_rs2 = (FU_status[1] & rs2 != 5'b0 & rs2 == FU_write_to[1]) ? 1'b1 :
+                   (FU_status[2] & rs2 != 5'b0 & rs2 == FU_write_to[2]) ? 1'b1 :
+                   (FU_status[3] & rs2 != 5'b0 & rs2 == FU_write_to[3]) ? 1'b1 :
+                   (FU_status[4] & rs2 != 5'b0 & rs2 == FU_write_to[4]) ? 1'b1 :
+                   (FU_status[5] & rs2 != 5'b0 & rs2 == FU_write_to[5]) ? 1'b1 : 1'b0;
+    wire WB_structure_hazard = |reservation_reg[FU_delay_cycles[use_FU]+1'b1] ? 1'b1 : 1'b0;
+    wire FU_structure_hazard = FU_status[use_FU] ? 1'b1 : 1'b0;
     wire FU_hazard = WAW|RAW_rs1|RAW_rs2|WB_structure_hazard|FU_structure_hazard;
 
     initial begin
@@ -175,6 +360,8 @@ module CtrlUnit(
         FU_delay_cycles[3] <= 5'd7;         // MUL cycles
         FU_delay_cycles[4] <= 5'd24;        // DIV cycles
         FU_delay_cycles[5] <= 5'd2;         // JUMP cycles
+        for (i=0; i<6; i=i+1)
+            FU_writeback_reg[i] <= 5'b0;     // initialize the rd of each FU
         reg_ID_flush_next <= 0;
     end
 
@@ -194,28 +381,37 @@ module CtrlUnit(
             FU_delay_cycles[4] <= 5'd24;        // DIV cycles
             FU_delay_cycles[5] <= 5'd2;         // JUMP cycles
         end
-        else begin
+        else begin // some FU finishes it's computation here, write the result back
             if (reservation_reg[0] != 0) begin  // FU写回将在这周期完成，这里需要联系39行
-                FU_writeback_en[TO_BE_FILLED] <= TO_BE_FILLED;
-                FU_status[TO_BE_FILLED] <= TO_BE_FILLED;
-                FU_write_to[TO_BE_FILLED] <= TO_BE_FILLED;
+                FU_writeback_en[reservation_reg[0]] <= 1'b1; // enable the corresponding FU write back signal
+                FU_status[reservation_reg[0]] <= 1'b0; // free the corresponding FU
+                FU_write_to[reservation_reg[0]] <= 5'b0; // free the corresponding FU
             end
             if (use_FU == 0 | reg_ID_flush_next) begin
-                TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
+                for (i=0; i<31; i=i+1)
+                    reservation_reg[i] <= reservation_reg[i+1]
+                reservation_reg[31] = 32'b0
+                // TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
                 B_in_FU <= 0;
                 J_in_FU <= 0;
             end
             else if (FU_hazard  | reg_ID_flush) begin
-                TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
+                for (i=0; i<31; i=i+1)
+                    reservation_reg[i] <= reservation_reg[i+1]
+                reservation_reg[31] = 32'b0
+                // TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
                 B_in_FU <= 0;
                 J_in_FU <= 0;
                 end
-            else if(valid_ID) begin  // regist FU operation
-                TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
-                FU_status[TO_BE_FILLED] <= TO_BE_FILLED;
+            else if(valid_ID) begin  // register FU operation
+                for (i=0; i<31; i=i+1)
+                    reservation_reg[i] <= (i==FU_delay_cycles[use_FU] ? use_FU : reservation_reg[i+1])
+                reservation_reg[31] <= 32'b0
+                // TO_BE_FILLED <= 0; //这里需要编写多行代码，完成reservation_reg的移位操作，第2位移到第1位，第3位移到第2位，以此类推。最后一位清零。推荐尝试for循环（当然手写三十多行赋值也可以）。
+                FU_status[use_FU] <= 1'b1; // set the corresponding FU busy
                 if(rd_used)begin
-                    FU_write_to[TO_BE_FILLED] <= TO_BE_FILLED;
-                    FU_writeback_en[TO_BE_FILLED] <= TO_BE_FILLED;
+                    FU_write_to[use_FU] <= rd;
+                    FU_writeback_en[use_FU] <= 1'b0;
                 end
                 B_in_FU <= B_valid;
                 J_in_FU <= JAL | JALR;

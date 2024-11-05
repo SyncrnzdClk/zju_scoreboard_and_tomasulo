@@ -3,7 +3,98 @@
 > 这份notes用于记录lab5实现过程中的各个模块设计的细节，以及其他报告、工程架构方面的说明，方便共同开发。
 
 ## Control Unit
-undone
+这个模块还挺麻烦的，后面出bug大概率会在这个模块。
+
+## 接口描述
+```verilog
+module CtrlUnit(
+    input clk,
+    input rst,
+
+    input[31:0] inst,
+    input valid_ID,
+    
+    input cmp_res_FU,
+
+    // IF
+    output reg_IF_en, branch_ctrl,
+
+    // ID
+    output reg_ID_en, reg_ID_flush,
+    output[2:0] ImmSel,
+    output ALU_en, MEM_en, MUL_en, DIV_en, JUMP_en,
+    
+    // FU
+    output[3:0] JUMP_op,
+    output[3:0] ALU_op,
+    output ALUSrcA,
+    output ALUSrcB,
+    output MEM_we,
+    
+    // WB
+    output reg[2:0] write_sel,
+    output reg[4:0] rd_ctrl,
+    output reg reg_write
+);
+```
+
+### 重要线网及寄存器组含义解释
+阅读这一部分的时候需要结合PPT第4到6页
+#### `FU_status`
+```verilog
+    reg[5:0] FU_status;
+```
+1. `FU_status`的作用是记录当前每个FU是否被占用，这会在后面判断FU_structure_hazard，RAW, WAW都要用到
+2. 需要注意的是`FU_status`的位数（6）实际上比FU的个数（5）多了一个，我理解这是为了方便从1开始索引FU。
+
+#### `reservation_reg`
+
+```verilog
+    reg[2:0] reservation_reg [0:31]
+```
+1. `reservation_reg`是最关键的寄存器组，他记录的信息是接下来的32个周期内哪些寄存器需要被写回。
+2. 比如`reservation_reg[3] = 3'd2`说明2号FU会在三个周期之后写回
+3. 这个寄存器组会在每个周期动态更新。
+
+#### `FU_write_to`
+
+```verilog
+    reg[4:0] FU_write_to [5:0];
+```
+1. `FU_write_to`记录的信息是各个FU写回的寄存器编号
+
+#### `FU_writeback_en`
+```verilog
+    reg[5:0] FU_writeback_en;
+```
+1. `FU_writeback_en`记录的是当前这个FU能否被写回，当他被置为1的时候就会把当前FU中的结果写回到`rd`中。
+
+#### `FU_delay_cycles`
+```verilog
+    reg[4:0] FU_delay_cycles [5:0];
+```
+1. `FU_delay_cycles`记录的是各个FU的初始latency，这是为了在register FU的时候把对应的FU写入到reservation_reg的对应位置。
+
+#### `latency`
+```verilog
+    wire [4:0] latency [5:0];
+```
+1. 这个线网组表示的是各个FU当前还需要多少时间完成计算。代码中通过暴力判断`reservation_reg`中的数据是否和FU的编号一致，来获取各个FU当前周期的latency。
+
+### 寄存器组维护逻辑
+
+
+
+### problems
+这里记录一些我写代码过程中遇到的问题，括号中是目前对问题的解答，不一定正确。
+1. 如何正常记录FD的rd，毕竟每周期指令都会来，但是如果FU被占的话，rd此时不应该被写进去（FU_hazard控制）
+2. 要是两条指令的写回时间重了怎么办？(写回冲突解决，详见PPT)
+3. 框架中没有给出rs1_used/rs2_used的信号，感觉判断RAW的时候还是需要用到的。（现在的做法是一棒子打死认为全都要用到，要是后面仿真出问题了再仔细解决，主要是这个涉及到各个指令的细节，现在还懒得看）
+4. 为啥FU_status/FU_write_to/FU_writeback_en都要设置成六位的信号？FU不是只有五个嘛？（为了索引FU方便，FU的索引是1-5）
+
+
+### 对于框架的建议
+1. FU的delay cycles感觉设置个localparam会比较好维护
 
 ## RV32core
 undone
