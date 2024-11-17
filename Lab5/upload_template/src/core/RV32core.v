@@ -9,6 +9,7 @@ module  RV32core(
         input rst,  // synchronous reset
         input interrupter  // interrupt source, for future use
     );
+    //for debug
     reg TO_BE_FILLED = 0;
     wire debug_clk;
     wire[31:0] debug_regs;
@@ -17,64 +18,87 @@ module  RV32core(
 
     debug_clk clock(.clk(clk),.debug_en(debug_en),.debug_step(debug_step),.debug_clk(debug_clk));
 
-    wire reg_IF_EN, reg_ID_EN, reg_ID_flush, FU_ALU_EN, FU_mem_EN, FU_mul_EN, FU_div_EN, FU_jump_EN;
-    wire RegWrite_ctrl, ALUSrcA_ctrl, ALUSrcB_ctrl, mem_w_ctrl, branch_ctrl;
-    wire[2:0] ImmSel_ctrl, DatatoReg_ctrl;
-    wire[3:0] ALUControl_ctrl, Jump_ctrl;
-    wire[4:0] rd_ctrl;
-
-
-    wire [31:0] PC_IF, next_PC_IF, PC_4_IF, inst_IF;
-
-    wire valid_ID;
-    wire[31:0]inst_ID, PC_ID, Imm_out_ID, rs1_data_ID, rs2_data_ID, ALUA_ID, ALUB_ID;
-
-    wire cmp_res_FU;
-    wire[31:0]ALUout_FU, mem_data_FU, mulres_FU, divres_FU, PC_jump_FU, PC_wb_FU;
-
-    wire[31:0]ALUout_WB, mem_data_WB, mulres_WB, divres_WB, PC_wb_WB, wt_data_WB;
-
-
     // IF
-    REG32 REG_PC(.clk(debug_clk),.rst(rst),.CE(reg_IF_EN),.D(next_PC_IF),.Q(PC_IF));
-    
-    add_32 add_IF(.a(PC_IF),.b(32'd4),.c(PC_4_IF));
-
-    MUX2T1_32 mux_IF(.I0(PC_4_IF),.I1(PC_jump_FU),.s(branch_ctrl),.o(next_PC_IF));
-
-    ROM_D inst_rom(.a(PC_IF[8:2]),.spo(inst_IF));
+        wire [31:0] PC_IF, next_PC_IF, PC_4_IF, inst_IF;
+        //PC
+        REG32 REG_PC(.clk(debug_clk),.rst(rst),.CE(reg_IF_EN),.D(next_PC_IF),.Q(PC_IF));
+        //PC+4
+        add_32 add_IF(.a(PC_IF),.b(32'd4),.c(PC_4_IF));
+        //PC control
+        MUX2T1_32 mux_IF(.I0(PC_4_IF),.I1(PC_jump_FU),.s(branch_ctrl),.o(next_PC_IF));
+        //ROM
+        ROM_D inst_rom(.a(PC_IF[8:2]),.spo(inst_IF));
 
 
     //Issue
+    wire valid_ID;
+    wire[31:0]inst_ID, PC_ID, Imm_out_ID, rs1_data_ID, rs2_data_ID, ALUA_ID, ALUB_ID;
+
     REG_ID reg_ID(.clk(debug_clk),.rst(rst),.EN(reg_ID_EN),
         .flush(reg_ID_flush),.PCOUT(PC_IF),.IR(inst_IF),
 
         .IR_ID(inst_ID),.PCurrent_ID(PC_ID),.valid(valid_ID));
-    
-    CtrlUnit ctrl(.clk(debug_clk),.rst(rst),.inst(inst_ID),.valid_ID(valid_ID),
-        .cmp_res_FU(cmp_res_FU),
 
-        .reg_IF_en(reg_IF_EN),.branch_ctrl(branch_ctrl),.reg_ID_en(reg_ID_EN),
-        .reg_ID_flush(reg_ID_flush),.ImmSel(ImmSel_ctrl),.ALU_en(FU_ALU_EN),
-        .MEM_en(FU_mem_EN),.MUL_en(FU_mul_EN),.DIV_en(FU_div_EN),.JUMP_en(FU_jump_EN),
-        .JUMP_op(Jump_ctrl),.ALU_op(ALUControl_ctrl),.MEM_we(mem_w_ctrl),
-        .ALUSrcA(ALUSrcA_ctrl),.ALUSrcB(ALUSrcB_ctrl),
-        .write_sel(DatatoReg_ctrl),.reg_write(RegWrite_ctrl),.rd_ctrl(rd_ctrl));
+        //control unit
+            //wires
+            wire reg_IF_EN, reg_ID_EN, reg_ID_flush, FU_ALU_EN, FU_mem_EN, FU_mul_EN, FU_div_EN, FU_jump_EN;
+            wire RegWrite_ctrl, ALUSrcA_ctrl, ALUSrcB_ctrl, mem_w_ctrl, branch_ctrl;
+            wire[2:0] ImmSel_ctrl, DatatoReg_ctrl;
+            wire[3:0] ALUControl_ctrl, Jump_ctrl;
+            wire[4:0] rd_ctrl;
+            //control unit
+            CtrlUnit ctrl(
+                //in
+                .clk(debug_clk),
+                .rst(rst),
+                .inst(inst_ID),
+                .valid_ID(valid_ID),
+                .cmp_res_FU(cmp_res_FU),
+                //out
+                //to IF
+                .reg_IF_en(reg_IF_EN),
+                .branch_ctrl(branch_ctrl),
+                //to ID
+                .reg_ID_en(reg_ID_EN),
+                .reg_ID_flush(reg_ID_flush),
+                .ImmSel(ImmSel_ctrl),
+                //to FU
+                .ALU_en(FU_ALU_EN),
+                .MEM_en(FU_mem_EN),
+                .MUL_en(FU_mul_EN),
+                .DIV_en(FU_div_EN),
+                .JUMP_en(FU_jump_EN),
+                .JUMP_op(Jump_ctrl),
+                .ALU_op(ALUControl_ctrl),
+                .MEM_we(mem_w_ctrl),
+                .ALUSrcA(ALUSrcA_ctrl),
+                .ALUSrcB(ALUSrcB_ctrl),
+                //to WB
+                .write_sel(DatatoReg_ctrl),
+                .reg_write(RegWrite_ctrl),
+                .rd_ctrl(rd_ctrl));
 
-    ImmGen imm_gen(.ImmSel(ImmSel_ctrl), .inst_field(inst_ID), .Imm_out(Imm_out_ID));
+        //imm generator
+        ImmGen imm_gen(.ImmSel(ImmSel_ctrl), .inst_field(inst_ID), .Imm_out(Imm_out_ID));
 
-    Regs register(.clk(debug_clk),.rst(rst),
-        .R_addr_A(inst_ID[19:15]),.rdata_A(rs1_data_ID),
-        .R_addr_B(inst_ID[24:20]),.rdata_B(rs2_data_ID),
-        .L_S(RegWrite_ctrl),.Wt_addr(rd_ctrl),.Wt_data(wt_data_WB),
-        .Debug_addr(debug_addr[4:0]),.Debug_regs(debug_regs));
+        //regfile
+        Regs register(
+            .clk(debug_clk),.rst(rst),
+            .R_addr_A(inst_ID[19:15]),.rdata_A(rs1_data_ID),
+            .R_addr_B(inst_ID[24:20]),.rdata_B(rs2_data_ID),
+            .L_S(RegWrite_ctrl),.Wt_addr(rd_ctrl),.Wt_data(wt_data_WB),
+            .Debug_addr(debug_addr[4:0]),.Debug_regs(debug_regs));
 
-    MUX2T1_32 mux_imm_ALU_ID_A(.I0(rs1_data_ID),.I1(PC_ID),.s(ALUSrcA_ctrl),.o(ALUA_ID));       
+        //operator selection
+        MUX2T1_32 mux_imm_ALU_ID_A(.I0(rs1_data_ID),.I1(PC_ID),.s(ALUSrcA_ctrl),.o(ALUA_ID));       
 
-    MUX2T1_32 mux_imm_ALU_ID_B(.I0(rs2_data_ID),.I1(Imm_out_ID),.s(ALUSrcB_ctrl),.o(ALUB_ID));  
+        MUX2T1_32 mux_imm_ALU_ID_B(.I0(rs2_data_ID),.I1(Imm_out_ID),.s(ALUSrcB_ctrl),.o(ALUB_ID));  
 
 
     // FU
+    wire cmp_res_FU;
+    wire[31:0]ALUout_FU, mem_data_FU, mulres_FU, divres_FU, PC_jump_FU, PC_wb_FU;
+
     FU_ALU alu(.clk(debug_clk),.EN(FU_ALU_EN),
         .ALUControl(ALUControl_ctrl),.ALUA(ALUA_ID),.ALUB(ALUB_ID),.res(ALUout_FU),
         .zero(),.overflow());
@@ -95,19 +119,32 @@ module  RV32core(
 
 
     // WB
-    MUX8T1_32 mux_DtR(
-    .s(TO_BE_FILLED),
+    wire[31:0]ALUout_WB, mem_data_WB, mulres_WB, divres_WB, PC_wb_WB, wt_data_WB;
 
-    .I0(TO_BE_FILLED),
-    .I1(TO_BE_FILLED),
-    .I2(TO_BE_FILLED),
-    .I3(TO_BE_FILLED),
-    .I4(TO_BE_FILLED),
-    .I5(TO_BE_FILLED),
-    .I6(TO_BE_FILLED),
-    .I7(TO_BE_FILLED),
-    
-    .o(TO_BE_FILLED));
+        //store data
+        REG32 reg_WB_ALU(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(ALUout_FU),.Q(ALUout_WB));
+
+        REG32 reg_WB_mem(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(mem_data_FU),.Q(mem_data_WB));
+
+        REG32 reg_WB_mul(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(mulres_FU),.Q(mulres_WB));
+
+        REG32 reg_WB_div(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(divres_FU),.Q(divres_WB));
+        
+        REG32 reg_WB_jump(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(PC_wb_FU),.Q(PC_wb_WB));
+        //select data to write
+        MUX8T1_32 mux_DtR(
+        .s(write_sel),
+
+        .I0(32'h0000_0000),),
+        .I1(ALUout_WB),
+        .I2(mem_data_WB),
+        .I3(mulres_WB),
+        .I4(divres_WB),
+        .I5(PC_wb_WB),
+        .I6(32'h0000_0000),
+        .I7(32'h0000_0000),
+        
+        .o(wt_data_WB));
 
 
     always @* begin

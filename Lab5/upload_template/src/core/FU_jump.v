@@ -7,7 +7,7 @@ module FU_jump(
 	output[31:0] PC_jump, PC_wb,
 	output cmp_res
 );
-    reg TO_BE_FILLED = 0;
+    //reg TO_BE_FILLED = 0;
 
     reg state;//用来强行延迟一个周期
 	initial begin
@@ -31,11 +31,11 @@ module FU_jump(
         else state <= 0;
     end
 
-    cmp_32 cmp(.a(TO_BE_FILLED), .b(TO_BE_FILLED), .ctrl(TO_BE_FILLED), .c(cmp_res));
+    cmp_32 cmp(.a(rs1_data_reg), .b(rs2_data_reg), .ctrl(cmp_ctrl_reg), .c(cmp_res));
 
-    add_32 add(.a(TO_BE_FILLED), .b(TO_BE_FILLED), .c(PC_jump));//第一个空有坑
+    add_32 add(.a(JALR_reg? rs1_data_reg : PC_reg), .b(imm_reg), .c(PC_jump));//第一个空有坑
 
-    add_32 add2(.a(PC_reg), .b(TO_BE_FILLED), .c(PC_wb));
+    add_32 add2(.a(PC_reg), .b(32'h4), .c(PC_wb));
 
 
 endmodule
