@@ -135,7 +135,7 @@ module  RV32core(
         MUX8T1_32 mux_DtR(
         .s(write_sel),
 
-        .I0(32'h0000_0000),),
+        .I0(32'h0000_0000),
         .I1(ALUout_WB),
         .I2(mem_data_WB),
         .I3(mulres_WB),
