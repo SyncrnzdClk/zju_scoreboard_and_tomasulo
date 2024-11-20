@@ -18,10 +18,10 @@ module FU_mul(
         if(EN & ~|state) begin // the condition is true when state is TRUE
             A_reg <= A;
             B_reg <= B;
-            state <= 7'b1000000; // reste the state
+            state <= 7'b1000000; // reset the state
         end
         // here we use left shift operation to maintain a counter (maybe faster than minus operation)
-        else state <= {1'b0, {state[6:1]}};//这里的作用就是强行将这个模块延迟N个周期再输出结果，使其符合config.json的设定
+        else state <= {1'b0, {state[6:1]}};//这里的作用就是强行将这个模块延迟N个周期再输出结果，使其符合config.json的设�?
     end
     
 

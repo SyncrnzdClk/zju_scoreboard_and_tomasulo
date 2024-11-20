@@ -122,25 +122,25 @@ module  RV32core(
     wire[31:0]ALUout_WB, mem_data_WB, mulres_WB, divres_WB, PC_wb_WB, wt_data_WB;
 
         //store data
-        REG32 reg_WB_ALU(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(ALUout_FU),.Q(ALUout_WB));
+//        REG32 reg_WB_ALU(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(ALUout_FU),.Q(ALUout_WB));
 
-        REG32 reg_WB_mem(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(mem_data_FU),.Q(mem_data_WB));
+//        REG32 reg_WB_mem(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(mem_data_FU),.Q(mem_data_WB));
 
-        REG32 reg_WB_mul(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(mulres_FU),.Q(mulres_WB));
+//        REG32 reg_WB_mul(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(mulres_FU),.Q(mulres_WB));
 
-        REG32 reg_WB_div(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(divres_FU),.Q(divres_WB));
+//        REG32 reg_WB_div(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(divres_FU),.Q(divres_WB));
         
-        REG32 reg_WB_jump(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(PC_wb_FU),.Q(PC_wb_WB));
+//        REG32 reg_WB_jump(.clk(debug_clk),.rst(rst),.CE(1'b1),.D(PC_wb_FU),.Q(PC_wb_WB));
         //select data to write
         MUX8T1_32 mux_DtR(
-        .s(write_sel),
+        .s(DatatoReg_ctrl),
 
         .I0(32'h0000_0000),
-        .I1(ALUout_WB),
-        .I2(mem_data_WB),
-        .I3(mulres_WB),
-        .I4(divres_WB),
-        .I5(PC_wb_WB),
+        .I1(ALUout_FU),
+        .I2(mem_data_FU),
+        .I3(mulres_FU),
+        .I4(divres_FU),
+        .I5(PC_wb_FU),
         .I6(32'h0000_0000),
         .I7(32'h0000_0000),
         

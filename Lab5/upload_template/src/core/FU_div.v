@@ -17,12 +17,17 @@ module FU_div(
     reg A_valid, B_valid;
     reg[31:0] A_reg, B_reg;
 
+    initial begin
+        A_valid <= 1'b0;
+        B_valid <= 1'b0;
+    end
+
     always@(posedge clk) begin
         if(EN & ~state) begin
             A_reg <= A;
             B_reg <= B;
-            A_valid <= 1;
-            B_valid <= 1;
+            A_valid <= 1'b1;
+            B_valid <= 1'b1;
             state <= 24'b1 << 23; // not sure whether this is the same as just setting a long number (maybe this takes more time in one cycle?)
         end
         else if(res_valid) begin
@@ -30,6 +35,7 @@ module FU_div(
             B_valid <= 0;
             state <= 0;
         end
+        else state <= {1'b0, {state[23:1]}};
     end
     
 
@@ -42,6 +48,6 @@ module FU_div(
         .m_axis_dout_tdata(divres)
     );
 
-    assign res = divres[31:0]; // the output `res` has only 32 bits
+    assign res = divres[63:32]; // the output `res` has only 32 bits
 
 endmodule
