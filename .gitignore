@@ -12,3 +12,6 @@ riscv_sources/
 
 # simulation_sources
 simulation_sources/
+
+# report
+*.pdf
