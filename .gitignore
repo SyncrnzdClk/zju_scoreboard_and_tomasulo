@@ -15,3 +15,7 @@ simulation_sources/
 
 # report
 *.pdf
+
+# zip
+*.zip
+

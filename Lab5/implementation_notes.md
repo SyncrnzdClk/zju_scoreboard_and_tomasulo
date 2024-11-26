@@ -1,6 +1,9 @@
 # Implementation Notes
 
 > 这份notes用于记录lab5实现过程中的各个模块设计的细节，以及其他报告、工程架构方面的说明，方便共同开发。
+>
+> latest update:
+> 这份notes已经过时了，由于课程压力太大，修完bug之后没时间重新修正这里面的implemetation
 
 ## Control Unit
 这个模块还挺麻烦的，后面出bug大概率会在这个模块。
