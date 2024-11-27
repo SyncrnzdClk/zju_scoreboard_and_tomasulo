@@ -302,8 +302,8 @@ module CtrlUnit(
                    (FUS[`FU_ALU][`DST_H:`DST_L] == reading_src2[`FU_MUL])|
                    (FUS[`FU_ALU][`DST_H:`DST_L] == reading_src2[`FU_DIV])|
                    (FUS[`FU_ALU][`DST_H:`DST_L] == reading_src2[`FU_MEM]);
-
-    wire MEM_WAR = (FUS[`FU_MEM][`DST_H:`DST_L] == 5'b0) ? 1'b0 : 
+    // notice only load might write into other registers
+    wire MEM_WAR = ((FUS[`FU_MEM][`DST_H:`DST_L] == 5'b0) | (FUS[`FU_MEM][`OP_L])) ? 1'b0 : 
                    (FUS[`FU_MEM][`DST_H:`DST_L] == reading_src1[`FU_ALU])|
                    (FUS[`FU_MEM][`DST_H:`DST_L] == reading_src1[`FU_JUMP])|
                    (FUS[`FU_MEM][`DST_H:`DST_L] == reading_src1[`FU_MUL])|
@@ -338,8 +338,8 @@ module CtrlUnit(
                    (FUS[`FU_DIV][`DST_H:`DST_L] == reading_src2[`FU_MUL])|
                    (FUS[`FU_DIV][`DST_H:`DST_L] == reading_src2[`FU_DIV])|
                    (FUS[`FU_DIV][`DST_H:`DST_L] == reading_src2[`FU_MEM]);
-    
-    wire JUMP_WAR = (FUS[`FU_JUMP][`DST_H:`DST_L] == 5'b0) ? 1'b0 : 
+    // notice only unconditional jump might write into other registers
+    wire JUMP_WAR = ((FUS[`FU_JUMP][`DST_H:`DST_L] == 5'b0) | (~FUS[`FU_JUMP][`OP_L])) ? 1'b0 : 
                    (FUS[`FU_JUMP][`DST_H:`DST_L] == reading_src1[`FU_ALU])|
                    (FUS[`FU_JUMP][`DST_H:`DST_L] == reading_src1[`FU_JUMP])|
                    (FUS[`FU_JUMP][`DST_H:`DST_L] == reading_src1[`FU_MUL])|
@@ -350,6 +350,9 @@ module CtrlUnit(
                    (FUS[`FU_JUMP][`DST_H:`DST_L] == reading_src2[`FU_MUL])|
                    (FUS[`FU_JUMP][`DST_H:`DST_L] == reading_src2[`FU_DIV])|
                    (FUS[`FU_JUMP][`DST_H:`DST_L] == reading_src2[`FU_MEM]);
+
+    // add some regs to record if WAR happens last cycle. these regs are only used to judge whether the `DONE bit should set to the new value;
+    reg WAR_reg [5:1];
 
     // maintain the table
     always @ (posedge clk or posedge rst) begin
@@ -362,6 +365,7 @@ module CtrlUnit(
             for (i = 1; i <= 5; i = i + 1) begin
                 FUS[i] <= 32'b0;
                 IMM[i] <= 32'b0;
+                WAR_reg[i] <= 1'b0;
             end
         end
 
@@ -370,7 +374,7 @@ module CtrlUnit(
             if (RO_en) begin // ?? why is RO_en controlling the IS ?
                 // not busy, no WAW, write info to FUS and RRS
                 // Issue指令时候的处理逻辑
-                if (|dst) RRS[dst] <= use_FU; // the result of the dst will be produced by the current FU
+                if ((|dst)) RRS[dst] <= use_FU; // the result of the dst will be produced by the current FU, and notice when dst is 5'b0, the RRS won't be updated here
                 FUS[use_FU][`BUSY] <= 1'b1;
                 FUS[use_FU][`SRC1_H:`SRC1_L] <= src1;
                 FUS[use_FU][`SRC2_H:`SRC2_L] <= src2;
@@ -380,7 +384,8 @@ module CtrlUnit(
                 FUS[use_FU][`FU2_H:`FU2_L] <= RRS[src2];
                 FUS[use_FU][`RDY1] <= (RRS[src1] == `FU_BLANK) ? 1'b1 : 1'b0; // 1 ready, 0 not if the RRS[src] is fu_blank, it means no fu is going to write into this src reg, so it is ready
                 FUS[use_FU][`RDY2] <= (RRS[src2] == `FU_BLANK) ? 1'b1 : 1'b0;
-                
+                // the `DONE bit will be dealt later
+
                 IMM[use_FU] <= imm;
                 PCR[use_FU] <= PC;
             end
@@ -395,63 +400,110 @@ module CtrlUnit(
                 // ALU
                 FUS[`FU_ALU][`RDY1] <= 1'b0;
                 FUS[`FU_ALU][`RDY2] <= 1'b0;
-                
             end
             else if (FUS[`FU_MEM][`RDY1] & FUS[`FU_MEM][`RDY2]) begin             
                 // MEM
                 FUS[`FU_MEM][`RDY1] <= 1'b0;
                 FUS[`FU_MEM][`RDY2] <= 1'b0;
-                
             end
             else if (FUS[`FU_MUL][`RDY1] & FUS[`FU_MUL][`RDY2]) begin             
                 // MUL
                 FUS[`FU_MUL][`RDY1] <= 1'b0;
                 FUS[`FU_MUL][`RDY2] <= 1'b0;
-                
             end
             else if (FUS[`FU_DIV][`RDY1] & FUS[`FU_DIV][`RDY2]) begin             
                 // DIV
                 FUS[`FU_DIV][`RDY1] <= 1'b0;
                 FUS[`FU_DIV][`RDY2] <= 1'b0;
-                
             end
 
-            // EX
-            FUS[`FU_ALU][`FU_DONE] <= ALU_done;
-            FUS[`FU_MEM][`FU_DONE] <= MEM_done;
-            FUS[`FU_MUL][`FU_DONE] <= MUL_done;
-            FUS[`FU_DIV][`FU_DONE] <= DIV_done;
-            FUS[`FU_JUMP][`FU_DONE]<= JUMP_done;
+            // EX 
+            FUS[`FU_ALU][`FU_DONE] <= WAR_reg[`FU_ALU] == 1'b1 ? 1'b1 : ALU_done;
+            FUS[`FU_MEM][`FU_DONE] <= WAR_reg[`FU_MEM] == 1'b1 ? 1'b1 : MEM_done;
+            FUS[`FU_MUL][`FU_DONE] <= WAR_reg[`FU_MUL] == 1'b1 ? 1'b1 : MUL_done;
+            FUS[`FU_DIV][`FU_DONE] <= WAR_reg[`FU_DIV] == 1'b1 ? 1'b1 : DIV_done;
+            FUS[`FU_JUMP][`FU_DONE]<= WAR_reg[`FU_JUMP] == 1'b1 ? 1'b1 : JUMP_done;
+
+            // update WAR_regs
+            // if the FU has done its job and WAR occurs, set the corresponding bit in the WAR_reg to 1, else 0
+            WAR_reg[`FU_ALU] <= (FUS[`FU_ALU][`FU_DONE] & (FUS[`FU_ALU][`DST_H:`DST_L] != 5'b0) & ALU_WAR) ? 1'b1 : 1'b0;
+            WAR_reg[`FU_MUL] <= (FUS[`FU_MUL][`FU_DONE] & (FUS[`FU_MUL][`DST_H:`DST_L] != 5'b0) & MUL_WAR) ? 1'b1 : 1'b0;
+            WAR_reg[`FU_DIV] <= (FUS[`FU_DIV][`FU_DONE] & (FUS[`FU_DIV][`DST_H:`DST_L] != 5'b0) & DIV_WAR) ? 1'b1 : 1'b0;
+            WAR_reg[`FU_MEM] <= (FUS[`FU_MEM][`FU_DONE] & (FUS[`FU_MEM][`DST_Hl`DST_L] != 5'b0) & (~FUS[`FU_MEM][`OP_H:`OP_L][0]) & MEM_WAR) ? 1'b1 : 1'b0;
+            WAR_reg[`FU_JUMP] <= (FUS[`FU_JUMP][`FU_DONE] & (FUS[`FU_JUMP][`DST_H:`DST_L] != 5'b0) & (FUS[`FU_JUMP][`OP_H:`OP_L][0]) & JUMP_WAR) ? 1'b1 : 1'b0;
             
-            // 对于WAR的处理逻辑
             // WB
-            if (FUS[`FU_JUMP][`FU_DONE] & JUMP_WAR) begin
-                FUS[`FU_JUMP] <= FUS[`FU_JUMP];
-                RRS[TO_BE_FILLED] <= TO_BE_FILLED;
+            // notice here we don't need to judge whether this fu is going to write into some register or not, because we have already checked this operation in the derivation of xxxx_WAR signal.
+            // if the fu is truly done, clear the corresponding FUS
+            if (FUS[`FU_JUMP][`FU_DONE] & ~JUMP_WAR) begin
+                FUS[`FU_JUMP][`BUSY] <= 1'b0;
+                FUS[`FU_JUMP][`FU_DONE] <= 1'b0;
+                // however, when updating RRS, we need to first judge whether the current fu is writing into some register or not, then find out the rd of the current fu
+                if (FUS[`FU_JUMP][`OP_L]) begin
+                    RRS[FUS[`FU_JUMP][`DST_H:`DST_L]] = `FU_BLANK;
+                end
+                // else just leave it unchanged
+            end
+            else (FUS[`FU_ALU][`FU_DONE] & ~ALU_WAR) begin
+                FUS[`FU_ALU][`BUSY] <= 1'b0;
+                FUS[`FU_ALU][`FU_DONE] <= 1'b0;
+                // however, when updating RRS, we need to first judge whether the current fu is writing into some register or not, then find out the rd of the current fu
+                // why not check the rd is 5'b0 or not ? we have ensure the RRS[5'b0] must be `FU_BLANK (in the register process), so this update won't change the value of it.
+                RRS[FUS[`FU_ALU][`DST_H:`DST_L]] = `FU_BLANK;
+            end
+            else (FUS[`FU_MUL][`FU_DONE] & ~MUL_WAR) begin
+                FUS[`FU_MUL][`BUSY] <= 1'b0;
+                FUS[`FU_MUL][`FU_DONE] <= 1'b0;
+                // however, when updating RRS, we need to first judge whether the current fu is writing into some register or not, then find out the rd of the current fu
+                // why not check the rd is 5'b0 or not ? we have ensure the RRS[5'b0] must be `FU_BLANK (in the register process), so this update won't change the value of it.
+                RRS[FUS[`FU_MUL][`DST_H:`DST_L]] = `FU_BLANK;
+            end
+            else (FUS[`FU_DIV][`FU_DONE] & ~DIV_WAR) begin
+                FUS[`FU_DIV][`BUSY] <= 1'b0;
+                FUS[`FU_DIV][`FU_DONE] <= 1'b0;
+                // however, when updating RRS, we need to first judge whether the current fu is writing into some register or not, then find out the rd of the current fu
+                // why not check the rd is 5'b0 or not ? we have ensure the RRS[5'b0] must be `FU_BLANK (in the register process), so this update won't change the value of it.
+                RRS[FUS[`FU_DIV][`DST_H:`DST_L]] = `FU_BLANK;
+            end
+            else (FUS[`FU_MEM][`FU_DONE] & ~MEM_WAR) begin
+                FUS[`FU_MEM][`BUSY] <= 1'b0;
+                FUS[`FU_MEM][`FU_DONE] <= 1'b0;
+                // however, when updating RRS, we need to first judge whether the current fu is writing into some register or not, then find out the rd of the current fu
+                // why not check the rd is 5'b0 or not ? we have ensure the RRS[5'b0] must be `FU_BLANK (in the register process), so this update won't change the value of it.
+                if (~FUS[`FU_MEM][`OP_L]) begin
+                    RRS[FUS[`FU_MEM][`DST_H:`DST_L]] = `FU_BLANK;
+                end
+            end
 
-                // 这里需要填入多行 Multiple rows need to be filled in here
-                TO_BE_FILLED <= 0;
-            end
-            // ALU              
-            else if (FUS[`FU_ALU][`FU_DONE] & ALU_WAR) begin
-                // 这里需要填入多行 Multiple rows need to be filled in here
-                TO_BE_FILLED <= 0;
-            end
-            // MEM             
-            else if (FUS[`FU_MEM][`FU_DONE] & MEM_WAR) begin
-                // 这里需要填入多行 Multiple rows need to be filled in here
-                TO_BE_FILLED <= 0;
-            end
-            // MUL             
-            else if (FUS[`FU_MUL][`FU_DONE] & MUL_WAR) begin
-                // 这里需要填入多行 Multiple rows need to be filled in here
-                TO_BE_FILLED <= 0;
-            end
-            // DIV             
-            else if (FUS[`FU_DIV][`FU_DONE] & DIV_WAR) begin
-                // 这里需要填入多行 Multiple rows need to be filled in here
-                TO_BE_FILLED <= 0;
-            end
+            // // 对于WAR的处理逻辑
+            // // WB
+            // if (FUS[`FU_JUMP][`FU_DONE] & JUMP_WAR) begin
+            //     FUS[`FU_JUMP] <= FUS[`FU_JUMP]; 
+            //     RRS[TO_BE_FILLED] <= TO_BE_FILLED;
+
+            //     // 这里需要填入多行 Multiple rows need to be filled in here
+            //     TO_BE_FILLED <= 0;
+            // end
+            // // ALU              
+            // else if (FUS[`FU_ALU][`FU_DONE] & ALU_WAR) begin
+            //     // 这里需要填入多行 Multiple rows need to be filled in here
+            //     TO_BE_FILLED <= 0;
+            // end
+            // // MEM             
+            // else if (FUS[`FU_MEM][`FU_DONE] & MEM_WAR) begin
+            //     // 这里需要填入多行 Multiple rows need to be filled in here
+            //     TO_BE_FILLED <= 0;
+            // end
+            // // MUL             
+            // else if (FUS[`FU_MUL][`FU_DONE] & MUL_WAR) begin
+            //     // 这里需要填入多行 Multiple rows need to be filled in here
+            //     TO_BE_FILLED <= 0;
+            // end
+            // // DIV             
+            // else if (FUS[`FU_DIV][`FU_DONE] & DIV_WAR) begin
+            //     // 这里需要填入多行 Multiple rows need to be filled in here
+            //     TO_BE_FILLED <= 0;
+            // end
         end
     end
 
@@ -554,18 +606,18 @@ module CtrlUnit(
         reg_write = 0;
         rd_ctrl = 0;
 
-        if (FUS[`FU_ALU][`FU_DONE] & (FUS[`FU_ALU][`DST_H:`DST_L] != 5'b0)) begin
+        if (FUS[`FU_ALU][`FU_DONE] & (FUS[`FU_ALU][`DST_H:`DST_L] != 5'b0) & ~ALU_WAR) begin
             write_sel = 3'b0;
             reg_write = 1'b1;
             rd_ctrl = FUS[`FU_ALU][`DST_H:`DST_L];
         end
-        else if (FUS[`FU_MUL][`FU_DONE] & (FUS[`FU_MUL][`DST_H:`DST_L] != 5'b0)) begin
+        else if (FUS[`FU_MUL][`FU_DONE] & (FUS[`FU_MUL][`DST_H:`DST_L] != 5'b0) & ~MUL_WAR) begin
             // 这里需要填入多行 Multiple rows need to be filled in here
             write_sel = 3'b010;
             reg_write = 1'b1; 
             rd_ctrl = FUS[`FU_MUL][`DST_H:`DST_L];
         end
-        else if (FUS[`FUS_DIV][`FU_DONE] & (FUS[`FU_DIV][`DST_H:`DST_L] != 5'b0)) begin
+        else if (FUS[`FU_DIV][`FU_DONE] & (FUS[`FU_DIV][`DST_H:`DST_L] != 5'b0) & ~DIV_WAR) begin
             // 这里需要填入多行 Multiple rows need to be filled in here
             write_sel = 3'b011;
             reg_write = 1'b1;
@@ -573,14 +625,14 @@ module CtrlUnit(
             
         end
         // store doesn't write to register file, load does
-        else if (FUS[`FUS_MEM][`FU_DONE] & (FUS[`FU_MEM][`DST_Hl`DST_L] != 5'b0) & (!FUS[`FU_MEM][`OP_H:`OP_L][0])) begin
+        else if (FUS[`FU_MEM][`FU_DONE] & (FUS[`FU_MEM][`DST_Hl`DST_L] != 5'b0) & (~FUS[`FU_MEM][`OP_H:`OP_L][0]) & ~MEM_WAR) begin
             // 这里需要填入多行 Multiple rows need to be filled in here
             write_sel = 3'b001;
             reg_write = 1'b1;
             rd_ctrl = FUS[`FU_MEM][`DST_H:`DST_L];
         end
         // branch doesn't write to register file, jal and jalr does
-        else if (FUS[`FU_JUMP][`FU_DONE] & (FUS[`FU_JUMP][`DST_H:`DST_L] != 5'b0) & (FUS[`FU_JUMP][`OP_H:`OP_L][0])) begin
+        else if (FUS[`FU_JUMP][`FU_DONE] & (FUS[`FU_JUMP][`DST_H:`DST_L] != 5'b0) & (FUS[`FU_JUMP][`OP_H:`OP_L][0]) & ~JUMP_WAR) begin
             // 这里需要填入多行 Multiple rows need to be filled in here
             write_sel = 3'b100;
             reg_write = 1'b1;
