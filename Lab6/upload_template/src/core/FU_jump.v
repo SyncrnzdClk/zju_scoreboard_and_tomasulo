@@ -7,14 +7,13 @@ module FU_jump(
 	output[31:0] PC_jump, PC_wb,
 	output is_jump, finish
 );
-	reg TO_BE_FILLED = 0;
-	wire cmp_res;
+	
     reg state;
-    assign finish = TO_BE_FILLED;
 	initial begin
         state = 0;
     end
 
+	wire cmp_res;
 	reg JALR_reg;
 	reg[3:0] cmp_ctrl_reg = 0;
 	reg[31:0] rs1_data_reg = 0, rs2_data_reg = 0, imm_reg = 0, PC_reg = 0;
@@ -22,7 +21,12 @@ module FU_jump(
 	always@(posedge clk) begin
 		if(EN & ~state) begin // state == 0
 			// 这里需要填入多行 Multiple rows need to be filled in here
-            TO_BE_FILLED <= 0;
+            JALR_reg <= JALR;
+			cmp_ctrl_reg <= cmp_ctrl;
+			rs1_data_reg <= rs1_data;
+			rs2_data_reg <= rs2_data;
+			imm_reg <= imm;
+			PC_reg <= PC;
 			state <= 1;
 		end
 		else state <= 0;
@@ -34,6 +38,7 @@ module FU_jump(
 
 	add_32 b(.a(PC_reg),.b(32'd4),.c(PC_wb));
 
-	assign is_jump = TO_BE_FILLED;
+	assign is_jump = cmp_res | JALR_reg;
+	assign finish = state == 1'b1;
 
 endmodule
